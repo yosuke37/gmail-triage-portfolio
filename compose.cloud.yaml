@@ -1,0 +1,9 @@
+# Use with compose.yaml, without --profile local-db. The secret database_url
+# must contain the hosted PostgreSQL TLS connection URL before startup.
+services:
+  gateway:
+    ports: !override ["80:80", "443:443"]
+    environment:
+      TRIAGE_PUBLIC_HOST: ${TRIAGE_PUBLIC_HOST:?Set your public DNS hostname}
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null https://$$TRIAGE_PUBLIC_HOST/gateway-health"]

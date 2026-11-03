@@ -1,0 +1,110 @@
+# Prepared deployment plan only. Creating this Blueprint provisions PAID
+# services. Review current costs and configure secret files before deployment.
+previews:
+  generation: "off"
+
+databases:
+  - name: triage-postgres
+    plan: basic-256mb
+    region: ohio
+    databaseName: triage
+    user: triage
+    ipAllowList: []
+
+envVarGroups:
+  - name: triage-service-auth
+    envVars:
+      - key: TRIAGE_API_TOKEN
+        generateValue: true
+  - name: triage-provider-secrets
+    envVars:
+      - key: OPENAI_API_KEY_FILE
+        value: /etc/secrets/openai_key
+      - key: GOOGLE_CREDENTIALS_PATH
+        value: /etc/secrets/google_credentials
+      - key: GOOGLE_READ_TOKEN_FILE
+        value: /etc/secrets/google_read_token
+      - key: GOOGLE_WRITE_TOKEN_FILE
+        value: /etc/secrets/google_write_token
+      - key: GOOGLE_TOKEN_DIR
+        value: /app/output/oauth
+  - name: triage-gateway-secrets
+    envVars: []
+
+services:
+  - type: pserv
+    name: triage-api
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerCommand: python -m triage.runtime api
+    healthCheckPath: /ready
+    envVars:
+      - fromGroup: triage-service-auth
+      - fromGroup: triage-provider-secrets
+      - key: PORT
+        value: "8000"
+      - key: TRIAGE_API_BIND
+        value: 0.0.0.0
+      - key: TRIAGE_API_ALLOWED_HOSTS
+        fromService: {type: pserv, name: triage-api, property: host}
+      - key: TRIAGE_MIGRATE_ON_START
+        value: "1"
+      - key: TRIAGE_DATABASE_URL
+        fromDatabase: {name: triage-postgres, property: connectionString}
+      - key: OPENAI_MODEL
+        sync: false
+
+  - type: pserv
+    name: triage-dashboard
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerCommand: python -m triage.runtime dashboard
+    envVars:
+      - fromGroup: triage-service-auth
+      - key: PORT
+        value: "8501"
+      - key: TRIAGE_API_HOSTPORT
+        fromService: {type: pserv, name: triage-api, property: hostport}
+
+  - type: worker
+    name: triage-worker
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerCommand: python -m triage.runtime worker
+    numInstances: 1
+    envVars:
+      - fromGroup: triage-provider-secrets
+      - key: TRIAGE_DATABASE_URL
+        fromDatabase: {name: triage-postgres, property: connectionString}
+      - key: TRIAGE_SERVICE_KIND
+        value: worker
+      - key: OPENAI_MODEL
+        sync: false
+
+  - type: worker
+    name: triage-scheduler
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerCommand: python -m triage.runtime scheduler
+    numInstances: 1
+    envVars:
+      - key: TRIAGE_DATABASE_URL
+        fromDatabase: {name: triage-postgres, property: connectionString}
+      - key: TRIAGE_SERVICE_KIND
+        value: scheduler
+
+  - type: web
+    name: triage-private-gateway
+    runtime: docker
+    plan: starter
+    region: ohio
+    dockerfilePath: ./deploy/RenderGateway.Dockerfile
+    healthCheckPath: /gateway-health
+    envVars:
+      - fromGroup: triage-gateway-secrets
+      - key: TRIAGE_DASHBOARD_UPSTREAM
+        fromService: {type: pserv, name: triage-dashboard, property: hostport}

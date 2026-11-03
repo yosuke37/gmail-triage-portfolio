@@ -1,0 +1,63 @@
+{
+  "synthetic": true,
+  "provider_calls": 0,
+  "usage_is_simulated": true,
+  "stale_worker_write_rejected": true,
+  "jobs": {
+    "succeeded": 1
+  },
+  "totals": {
+    "attempts": 3,
+    "average_seconds": 3.0,
+    "requests": 1,
+    "total_tokens": 30,
+    "expired_leases": 1
+  },
+  "recent_attempts": [
+    {
+      "job_id": "d84b075189184e868fc44429a203082f",
+      "attempt": 3,
+      "worker_id": "worker-b",
+      "state": "succeeded",
+      "started_at": 1018.0,
+      "finished_at": 1019.0,
+      "duration_seconds": 1.0,
+      "requests": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "kind": "ingest",
+      "request_id": "synthetic-demo"
+    },
+    {
+      "job_id": "d84b075189184e868fc44429a203082f",
+      "attempt": 2,
+      "worker_id": "worker-a",
+      "state": "lease_expired",
+      "started_at": 1012.0,
+      "finished_at": 1018.0,
+      "duration_seconds": 6.0,
+      "requests": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "kind": "ingest",
+      "request_id": "synthetic-demo"
+    },
+    {
+      "job_id": "d84b075189184e868fc44429a203082f",
+      "attempt": 1,
+      "worker_id": "worker-a",
+      "state": "retry_scheduled",
+      "started_at": 1000.0,
+      "finished_at": 1002.0,
+      "duration_seconds": 2.0,
+      "requests": 1,
+      "input_tokens": 20,
+      "output_tokens": 10,
+      "total_tokens": 30,
+      "kind": "ingest",
+      "request_id": "synthetic-demo"
+    }
+  ]
+}

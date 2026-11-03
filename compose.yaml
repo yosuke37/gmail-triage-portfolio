@@ -1,0 +1,172 @@
+name: gmail-triage
+
+x-app: &app
+  image: gmail-triage:local
+  build: .
+  init: true
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp:mode=1777
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+x-db-env: &db-env
+  TRIAGE_DATABASE_URL_FILE: /run/secrets/database_url
+  TRIAGE_DB_PATH: /app/output/triage.sqlite3
+
+x-provider-env: &provider-env
+  <<: *db-env
+  OPENAI_API_KEY_FILE: /run/secrets/openai_key
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+  GOOGLE_CREDENTIALS_PATH: /run/secrets/google_credentials
+  GOOGLE_READ_TOKEN_FILE: /run/secrets/google_read_token
+  GOOGLE_WRITE_TOKEN_FILE: /run/secrets/google_write_token
+  GOOGLE_TOKEN_DIR: /app/output/oauth
+
+x-health: &health
+  interval: 15s
+  timeout: 8s
+  retries: 3
+  start_period: 30s
+
+services:
+  postgres:
+    image: postgres:18
+    profiles: [local-db]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: triage
+      POSTGRES_USER: triage_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+    secrets: [postgres_password, postgres_admin_password]
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-triage.sh:ro
+    healthcheck:
+      <<: *health
+      test: [CMD-SHELL, "pg_isready -U triage_admin -d triage"]
+    # No host database port. This database is isolated from the existing app DB.
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: [python, -m, triage.runtime, migrate]
+    environment: *db-env
+    secrets: [database_url]
+    volumes: [app_state:/app/output]
+
+  api:
+    <<: *app
+    command: [python, -m, triage.runtime, api]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    environment:
+      <<: *provider-env
+      TRIAGE_API_TOKEN_FILE: /run/secrets/api_token
+      TRIAGE_API_BIND: 0.0.0.0
+      TRIAGE_API_ALLOWED_HOSTS: api
+    secrets: [database_url, api_token, openai_key, google_credentials, google_read_token, google_write_token]
+    volumes: [app_state:/app/output]
+    healthcheck:
+      <<: *health
+      test: [CMD, python, -m, triage.service_health, api]
+
+  dashboard:
+    <<: *app
+    command: [python, -m, triage.runtime, dashboard]
+    depends_on:
+      api: {condition: service_healthy}
+    environment:
+      TRIAGE_API_URL: http://api:8000
+      TRIAGE_INTERNAL_API_ORIGIN: http://api:8000
+      TRIAGE_API_TOKEN_FILE: /run/secrets/api_token
+    secrets: [api_token]
+    healthcheck:
+      <<: *health
+      test: [CMD, python, -m, triage.service_health, dashboard]
+
+  worker:
+    <<: *app
+    command: [python, -m, triage.runtime, worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    environment:
+      <<: *provider-env
+      TRIAGE_SERVICE_KIND: worker
+    secrets: [database_url, openai_key, google_credentials, google_read_token, google_write_token]
+    volumes: [app_state:/app/output]
+    stop_grace_period: 120s
+    healthcheck:
+      <<: *health
+      test: [CMD, python, -m, triage.service_health, worker]
+
+  scheduler:
+    <<: *app
+    command: [python, -m, triage.runtime, scheduler]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    environment:
+      <<: *db-env
+      TRIAGE_SERVICE_KIND: scheduler
+    secrets: [database_url]
+    volumes: [app_state:/app/output]
+    healthcheck:
+      <<: *health
+      test: [CMD, python, -m, triage.service_health, scheduler]
+
+  gateway:
+    build: {context: ., dockerfile: deploy/Gateway.Dockerfile}
+    restart: unless-stopped
+    depends_on:
+      dashboard: {condition: service_healthy}
+    ports: ["127.0.0.1:8443:443"]
+    environment:
+      TRIAGE_PUBLIC_HOST: localhost
+    secrets: [gateway_auth]
+    volumes: [caddy_data:/data, caddy_config:/config]
+    healthcheck:
+      <<: *health
+      test: [CMD-SHELL, "wget -q --no-check-certificate -O /dev/null https://localhost/gateway-health"]
+
+  backups:
+    build: {context: ., dockerfile: deploy/Backup.Dockerfile}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    environment:
+      TRIAGE_DATABASE_URL_FILE: /run/secrets/database_url
+      BACKUP_INTERVAL_SECONDS: "86400"
+      BACKUP_RETAIN_COUNT: "7"
+    secrets: [database_url]
+    volumes: [database_backups:/backups]
+    healthcheck:
+      <<: *health
+      start_period: 120s
+      test: [CMD, python3, /backup_service.py, health]
+
+secrets:
+  database_url: {file: ./.secrets/deploy/database_url}
+  postgres_password: {file: ./.secrets/deploy/postgres_password}
+  postgres_admin_password: {file: ./.secrets/deploy/postgres_admin_password}
+  api_token: {file: ./.secrets/deploy/api_token}
+  openai_key: {file: ./.secrets/deploy/openai_key}
+  google_credentials: {file: ./.secrets/deploy/google_credentials}
+  google_read_token: {file: ./.secrets/deploy/google_read_token}
+  google_write_token: {file: ./.secrets/deploy/google_write_token}
+  gateway_auth: {file: ./.secrets/deploy/gateway_auth}
+
+volumes:
+  postgres_data:
+  app_state:
+  caddy_data:
+  caddy_config:
+  database_backups:

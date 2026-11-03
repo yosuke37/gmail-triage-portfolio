@@ -1,0 +1,7 @@
+[
+  {"id":"sample-1","sender":"recruiter@example.com","subject":"Interview invitation","body":"We enjoyed your application. Can you join an interview on Tuesday?"},
+  {"id":"sample-2","sender":"digest@example.com","subject":"This week's Python jobs","body":"Your weekly newsletter of Python openings. Unsubscribe at any time."},
+  {"id":"sample-3","sender":"shop@example.com","subject":"Your receipt","body":"Payment received for your order. Thank you."},
+  {"id":"sample-4","sender":"colleague@example.com","subject":"Project proposal","body":"Please review the proposal and send feedback by Friday."},
+  {"id":"sample-5","sender":"friend@example.com","subject":"Hello!","body":"It was great seeing you last weekend."}
+]

@@ -1,0 +1,52 @@
+name: Verify application and deployment
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: isolated-ci-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TRIAGE_TEST_POSTGRES: "1"
+      TRIAGE_TEST_ADMIN_URL: postgresql://postgres:isolated-ci-password@127.0.0.1:5432/postgres
+      OPENAI_API_KEY: ""
+      OPENAI_MODEL: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip, cache-dependency-path: requirements.lock}
+      - run: pip install -r requirements.lock
+      - run: pip install --no-deps -e .
+      # Match pg_dump to the CI server. No app credentials or data are used.
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-18
+          echo /usr/lib/postgresql/18/bin >> "$GITHUB_PATH"
+      - run: python -m pip check
+      - run: python -m unittest discover -s tests -q
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install 'bcrypt>=4,<6'
+      - run: python scripts/prepare_deployment.py
+      - run: cp deploy/compose.env.example deploy/compose.env
+      - run: docker compose --env-file deploy/compose.env --profile local-db config --quiet
+      - run: docker compose --env-file deploy/compose.env --profile local-db up --build --wait --wait-timeout 300
+      - run: python deploy/smoke.py
+      - if: always()
+        run: docker compose --env-file deploy/compose.env --profile local-db ps --all
+      - if: always()
+        run: docker compose --env-file deploy/compose.env --profile local-db down --volumes

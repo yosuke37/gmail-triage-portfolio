@@ -1,0 +1,21 @@
+{
+    admin off
+}
+
+{$TRIAGE_PUBLIC_HOST:localhost} {
+    @health path /gateway-health
+    handle @health {
+        respond "ok" 200
+    }
+    handle {
+        import {$TRIAGE_GATEWAY_AUTH_FILE:/run/secrets/gateway_auth}
+        header {
+            X-Content-Type-Options nosniff
+            Referrer-Policy no-referrer
+            X-Frame-Options DENY
+        }
+        reverse_proxy {$TRIAGE_DASHBOARD_UPSTREAM:dashboard:8501} {
+            header_up -Authorization
+        }
+    }
+}

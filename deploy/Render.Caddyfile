@@ -1,0 +1,22 @@
+{
+    admin off
+    auto_https off
+}
+
+:{$PORT:10000} {
+    @health path /gateway-health
+    handle @health {
+        respond "ok" 200
+    }
+    handle {
+        import /etc/secrets/gateway_auth
+        header {
+            X-Content-Type-Options nosniff
+            Referrer-Policy no-referrer
+            X-Frame-Options DENY
+        }
+        reverse_proxy {$TRIAGE_DASHBOARD_UPSTREAM} {
+            header_up -Authorization
+        }
+    }
+}
