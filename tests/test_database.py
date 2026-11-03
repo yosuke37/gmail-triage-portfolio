@@ -217,7 +217,11 @@ class PostgresTests(PostgresFixture, unittest.TestCase):
         self.assertEqual(dump.read_bytes()[:5], b"PGDMP")
         restored_name = "triage_test_" + uuid4().hex
         restored_url = make_url(self.pg_url).set(database=restored_name)
-        binary = Path(__file__).resolve().parent.parent / ".tools" / "postgresql-18.6-5" / "pgsql" / "bin" / "pg_restore.exe"
+        import shutil
+        binary = shutil.which("pg_restore")
+        if not binary:
+            binary = Path(__file__).resolve().parent.parent / ".tools" / "postgresql-18.6-5" / "pgsql" / "bin" / "pg_restore.exe"
+        self.assertTrue(Path(binary).is_file(), "Install a PostgreSQL pg_restore client compatible with the test server")
         with psycopg.connect(native_url(self.pg_admin_url), autocommit=True) as admin:
             admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(restored_name)))
         try:
