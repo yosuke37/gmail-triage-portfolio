@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from triage.core import Email, Label, Suggestion
 
-PROMPT_VERSION = "triage-planner-v1"
-WORKFLOW_VERSION = "action-proposals-v1"
+PROMPT_VERSION = "triage-planner-attachments-v2"
+WORKFLOW_VERSION = "action-proposals-attachments-v2"
 Kind = Literal["set_label", "mark_read", "mark_unread", "draft_reply"]
 Risk = Literal["prompt_injection", "sensitive_request", "ambiguous"]
 
@@ -20,8 +20,15 @@ class StrictModel(BaseModel):
 
 
 class Evidence(StrictModel):
-    field: Literal["sender", "subject", "body"]
+    field: Literal["sender", "subject", "body", "attachment"]
     quote: str = Field(min_length=1, max_length=500)
+    attachment_id: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def attachment_reference(self):
+        if (self.field == "attachment") != bool(self.attachment_id):
+            raise ValueError("Attachment evidence requires an attachment id; other fields must use null.")
+        return self
 
 
 class Action(StrictModel):
@@ -73,7 +80,8 @@ class Policy:
 
 
 def deterministic_risks(email):
-    text = f"{email.sender}\n{email.subject}\n{email.body}".casefold()
+    from triage.attachments import attachment_context
+    text = (f"{email.sender}\n{email.subject}\n{email.body}" + "\n" + "\n".join(a.get("text", "") + "\n" + a.get("filename", "") for a in attachment_context(email))).casefold()
     # Defense in depth for common patterns, not a comprehensive injection detector.
     patterns = (r"ignore\s+(?:all\s+)?(?:previous|prior|your)\s+(?:instructions|rules)",
                 r"(?:system|developer)\s+(?:prompt|message)\s*:", r"(?:reveal|send|print)\s+(?:me\s+)?(?:your\s+)?(?:api key|secret|password)")
@@ -84,6 +92,19 @@ def baseline_plan(email: Email, suggestion: Suggestion) -> Plan:
     field = next((f for f in ("subject", "body", "sender") if getattr(email, f)), "subject")
     quote = getattr(email, field)[:200] or "[no content]"
     action = Action(kind="set_label", label=suggestion.label, reply_instruction=None, evidence=Evidence(field=field, quote=quote))
+    if email.attachments:
+        from triage.core import demo_classify
+        from triage.attachments import attachment_context
+        body_only = Email(email.id, email.sender, email.subject, email.body)
+        if demo_classify(body_only).label != suggestion.label:
+            triggers = {"Newsletters": ("newsletter", "unsubscribe"), "Recruiting": ("interview", "recruiter"),
+                "Receipts": ("receipt", "payment received"), "Action needed": ("please confirm", "please review")}.get(suggestion.label, ())
+            for item in attachment_context(email):
+                position = next((item["text"].lower().find(term) for term in triggers if term in item["text"].lower()), -1)
+                if position >= 0:
+                    start = max(0, position - 30)
+                    action.evidence = Evidence(field="attachment", attachment_id=item["id"], quote=item["text"][start:start+200])
+                    break
     return Plan(schema_version="1", intent={"Action needed": "request", "Recruiting": "recruiting", "Receipts": "receipt", "Newsletters": "newsletter", "Other": "other"}[suggestion.label],
                 label=suggestion.label, reason=suggestion.reason, needs_review=suggestion.needs_review,
                 risk_flags=["ambiguous"] if suggestion.needs_review else [], actions=[action])
@@ -113,12 +134,23 @@ def decisions(bundle, policy: Policy):
     return results
 
 
+def evidence_valid(email, evidence):
+    from triage.attachments import source_fields
+    fields = source_fields(email)
+    if evidence.field == "attachment":
+        item = next((a for a in fields["attachments"] if a["id"] == evidence.attachment_id), None)
+        return bool(item and item["status"] == "extracted" and evidence.quote in item["text"])
+    return evidence.quote in fields[evidence.field]
+
+
 def validate_plan(email, plan: Plan, policy=Policy()):
-    fields = {"sender": email.sender[:1000], "subject": email.subject[:1000], "body": email.body[:12000]}
+    from triage.attachments import source_fields
+    fields = source_fields(email)
+    attachments = fields["attachments"]
     bundle = {
         "workflow_version": WORKFLOW_VERSION, "prompt_version": PROMPT_VERSION,
-        "plan": plan.model_dump(), "evidence_valid": [a.evidence.quote in fields[a.evidence.field] for a in plan.actions],
-        "risk_flags": sorted(set(plan.risk_flags + deterministic_risks(email))),
+        "plan": plan.model_dump(), "evidence_valid": [evidence_valid(email, a.evidence) for a in plan.actions],
+        "risk_flags": sorted(set(plan.risk_flags + deterministic_risks(email) + (["attachment_requires_review"] if attachments else []))),
         "email_fingerprint": hashlib.sha256(json.dumps([email.id, fields], sort_keys=True).encode()).hexdigest(),
     }
     bundle["decisions"] = decisions(bundle, policy)

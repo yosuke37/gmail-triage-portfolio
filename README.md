@@ -4,6 +4,8 @@ A Python portfolio project for explainable email labeling using the OpenAI Agent
 
 ## Current capabilities
 
+**Attachment-aware review** includes bounded text PDFs and `.txt` files in classification and reply drafting, with stored previews, typed source citations, extraction statuses, and mandatory human review for attachment-bearing messages. An offline synthetic demo is included. See [attachment setup, limits, and verification](docs/ATTACHMENTS.md).
+
 **Docker and private hosting packaging** now include Compose services, a login-protected HTTPS gateway, mounted secret files, health/readiness checks, restart policies, scheduled backup/restore tooling, and a prepared Render Blueprint. Per-attempt durations, token usage, failures, and lease recovery appear in Background jobs. See [deployment setup and remaining cloud activation steps](docs/DEPLOYMENT.md). Docker build and local HTTPS/login, backup restore, and job durability smoke tests have passed. Cloud resources have not been provisioned.
 
 **Durable jobs and dedicated workers** now separate slow AI/Gmail processing from HTTP requests. PostgreSQL stores queued work, leases, retry history, and progress. The scheduler enqueues due jobs; workers execute them independently. The dashboard monitors jobs and service health. See [service startup and job recovery](docs/JOBS.md).

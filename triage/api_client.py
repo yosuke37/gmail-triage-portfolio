@@ -77,6 +77,9 @@ class ApiClient:
     def suggestion(self, row_id):
         return self.detail(row_id)["suggestion"]
 
+    def attachments(self, row_id):
+        return self.detail(row_id)["attachments"]
+
     def verdicts(self, row_id):
         return self.detail(row_id)["decisions"]
 

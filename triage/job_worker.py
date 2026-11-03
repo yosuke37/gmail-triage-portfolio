@@ -63,7 +63,8 @@ def execute(store, job, context):
         context.check()
         with store.db:
             store.log(payload.row_id, "ai_reply_drafted", {"tone": payload.tone})
-        return {"original": {**original, "email": asdict(original["email"])}, "body": draft.body, "review_notes": draft.review_notes}
+        return {"original": {**original, "email": asdict(original["email"])}, "body": draft.body, "review_notes": draft.review_notes,
+            "evidence": [e.model_dump() for e in getattr(draft, "evidence", [])]}
     if job["kind"] == "daily_digest":
         from triage.summaries import Summaries, generate_digest
 

@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir -r requirements.lock
 COPY triage ./triage
 COPY dashboard.py ./
 COPY data/sample_emails.json ./data/sample_emails.json
+COPY data/attachment_demo.json ./data/attachment_demo.json
 COPY reports/proposals-dev.json reports/proposals-holdout.json ./reports/
 RUN pip install --no-cache-dir --no-deps . \
     && useradd --uid 10001 --create-home triage \

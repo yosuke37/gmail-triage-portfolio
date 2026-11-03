@@ -28,6 +28,8 @@ def import_sqlite(source_path, target_engine):
                 if target.execute(select(table).limit(1)).first() is not None:
                     raise ValueError("Target application tables are not empty; import was refused without overwriting data.")
             existing = set(inspect(source).get_table_names())
+            if "email_attachments" in existing and source.execute(text("SELECT 1 FROM email_attachments LIMIT 1")).first():
+                raise ValueError("Import with attachment evidence is unsupported; use a full database backup/restore to preserve it.")
             for table in metadata.sorted_tables:
                 if table.name not in existing:
                     counts[table.name] = 0

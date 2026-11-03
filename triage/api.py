@@ -148,7 +148,7 @@ def create_app(*, database_path=None, database_url=None, token=None):
                 auto = Automation(store)
                 config, state = auto.config(), auto.state()
                 verdicts = decisions(bundle, Policy(mode=row["mode"], source=row["source"], account=row["account"], authorized_account=state["account"] or row["account"], auto_labels=tuple(config.auto_labels) if state["enabled"] else (), auto_draft_labels=tuple(config.suggested_reply_labels) if state["enabled"] else ()))
-            return {"email": row, "proposal": bundle, "decisions": verdicts, "reply": store.reply(row_id), "suggestion": Summaries(store).suggestion(row_id)}
+            return {"email": row, "proposal": bundle, "decisions": verdicts, "reply": store.reply(row_id), "suggestion": Summaries(store).suggestion(row_id), "attachments": store.attachments(row_id)}
 
     @router.post("/emails/{row_id}/review")
     def review(row_id: int, body: ReviewRequest):

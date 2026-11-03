@@ -80,8 +80,8 @@ def body_text(payload: dict) -> str:
         return ""
     parts = payload.get("parts", [])
     if parts:
-        plain = [p for p in parts if p.get("mimeType") == "text/plain"]
-        return "\n".join(body_text(p) for p in (plain or parts))[:12000]
+        plain = [p for p in parts if p.get("mimeType") == "text/plain" and not p.get("filename") and not p.get("body", {}).get("attachmentId")]
+        return "\n".join(text for p in (plain or parts) if (text := body_text(p)))[:12000]
     if payload.get("mimeType", "text/plain") not in ("text/plain", "text/html"):
         return ""
     data = payload.get("body", {}).get("data", "")
@@ -106,13 +106,22 @@ class Gmail:
         self.writable = writable
         self.account = service.users().getProfile(userId="me").execute()["emailAddress"].lower()
 
+    def email_preview(self, message):
+        from triage.attachments import read_attachments
+        payload = message.get("payload", {})
+        headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
+        def download(attachment_id):
+            return self.service.users().messages().attachments().get(userId="me", messageId=message["id"], id=attachment_id).execute(num_retries=0).get("data")
+        attachments = read_attachments(payload, download)
+        return Email(message["id"], headers.get("from", ""), headers.get("subject", "(no subject)"), body_text(payload), attachments)
+
     def original(self, email_id: str):
         """Read a text preview and current status without changing UNREAD."""
         message = self.service.users().messages().get(userId="me", id=email_id, format="full").execute()
         payload = message.get("payload", {})
         headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
         return {
-            "email": Email(message["id"], headers.get("from", ""), headers.get("subject", "(no subject)"), body_text(payload)),
+            "email": self.email_preview(message),
             "unread": "UNREAD" in message.get("labelIds", []),
             "date": headers.get("date", ""),
             "reply_to": headers.get("reply-to", ""),
@@ -132,7 +141,7 @@ class Gmail:
                 msg = self.service.users().messages().get(userId="me", id=item["id"], format="full").execute()
                 payload = msg.get("payload", {})
                 headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
-                yield Email(msg["id"], headers.get("from", ""), headers.get("subject", "(no subject)"), body_text(payload))
+                yield self.email_preview(msg)
                 count += 1
                 if count >= limit:
                     return

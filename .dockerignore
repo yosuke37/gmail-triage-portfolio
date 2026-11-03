@@ -9,6 +9,7 @@
 !reports/proposals-holdout.json
 !data/
 !data/sample_emails.json
+!data/attachment_demo.json
 !deploy/
 !deploy/**
 deploy/*.env

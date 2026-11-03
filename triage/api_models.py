@@ -122,3 +122,4 @@ class EmailDetailsResponse(BaseModel):
     decisions: list[dict]
     reply: dict | None
     suggestion: dict | None
+    attachments: list[dict]

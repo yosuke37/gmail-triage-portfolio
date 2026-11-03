@@ -126,7 +126,7 @@ class ParsingTests(unittest.TestCase):
 
     def test_prefers_plain_text_and_skips_attachments(self):
         payload = {"parts": [self.part("text/html", "<b>HTML duplicate</b>"), self.part("text/plain", "Plain content"), self.part("text/plain", "Secret attachment", filename="notes.txt")]}
-        self.assertEqual(body_text(payload), "Plain content\n")
+        self.assertEqual(body_text(payload), "Plain content")
 
     def test_html_drops_scripts_and_body_is_bounded(self):
         self.assertEqual(body_text(self.part("text/html", "<p>Hello</p><script>evil()</script>")), "Hello")

@@ -11,6 +11,7 @@ class Email:
     sender: str
     subject: str
     body: str
+    attachments: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -26,7 +27,8 @@ def demo_classify(email: Email) -> Suggestion:
 
     This is deliberately a keyword baseline, not an AI simulation or quality metric.
     """
-    text = f"{email.subject}\n{email.body}".lower()
+    from triage.attachments import attachment_context
+    text = (f"{email.subject}\n{email.body}\n" + "\n".join(a["text"] for a in attachment_context(email))).lower()
     if "newsletter" in text or "unsubscribe" in text:
         return Suggestion("Newsletters", "Contains newsletter or unsubscribe text.", False)
     if "interview" in text or "recruiter" in text:

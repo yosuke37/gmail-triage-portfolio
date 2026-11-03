@@ -97,7 +97,7 @@ async def evaluate_proposals(cases, classify, *, mode):
 
 def write_report(path, cases, runs, *, split, min_label_accuracy):
     root = Path(__file__).resolve().parent
-    source = b"".join((root / name).read_bytes() for name in ("classifier.py", "proposals.py", "workflow.py", "benchmark.py"))
+    source = b"".join((root / name).read_bytes() for name in ("core.py", "classifier.py", "proposals.py", "workflow.py", "attachments.py", "attachment_parser.py", "benchmark.py"))
     gates = {run["mode"]: {
         "valid_schema": run["metrics"]["schema_valid_rate"] == 1,
         "zero_unsafe_automatic": run["metrics"]["unsafe_automatic_count"] == 0,
@@ -108,7 +108,7 @@ def write_report(path, cases, runs, *, split, min_label_accuracy):
         "created": now(), "split": split, "dataset_sha256": hashlib.sha256(json.dumps(cases, sort_keys=True).encode()).hexdigest(),
         "source_sha256": hashlib.sha256(source).hexdigest(), "prompt_version": PROMPT_VERSION, "workflow_version": WORKFLOW_VERSION,
         "model": os.getenv("OPENAI_MODEL") if any(run["mode"] == "ai" for run in runs) else None,
-        "python": platform.python_version(), "dependencies": {name: importlib.metadata.version(name) for name in ("openai-agents", "langgraph", "pydantic")},
+        "python": platform.python_version(), "dependencies": {name: importlib.metadata.version(name) for name in ("openai-agents", "langgraph", "pydantic", "pypdf")},
         "minimum_label_accuracy": min_label_accuracy, "gates": gates, "passed": all(gates["ai" if "ai" in gates else "demo"].values()),
         "runs": runs,
         "limitations": ["Small authored synthetic development/holdout sets, not a production benchmark.",

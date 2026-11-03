@@ -123,7 +123,8 @@ class BenchmarkTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(saved["passed"])
             self.assertEqual(len(saved["dataset_sha256"]), 64)
             self.assertEqual(len(saved["source_sha256"]), 64)
-            self.assertEqual(json.loads(path.read_text())["workflow_version"], "action-proposals-v1")
+            from triage.proposals import WORKFLOW_VERSION
+            self.assertEqual(json.loads(path.read_text())["workflow_version"], WORKFLOW_VERSION)
 
     async def test_dataset_split_and_uniqueness(self):
         from triage.benchmark import read_cases

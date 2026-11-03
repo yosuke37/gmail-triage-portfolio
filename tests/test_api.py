@@ -169,6 +169,19 @@ class ApiTests(unittest.TestCase):
             gmail.assert_not_called()
             draft.assert_not_called()
 
+    def test_attachment_snapshots_are_authenticated_details_not_list_payloads(self):
+        email = Email("attachment-message", "vendor@example.com", "Document", "See attached.", (
+            {"id": "attachment-1", "filename": "invoice.txt", "mime_type": "text/plain", "status": "extracted", "text": "Private attachment total USD 125.00", "truncated": False},))
+        self.store.add("gmail", "me@example.com", email, Suggestion("Action needed", "Review document", True), "ai")
+        row_id = self.store.rows()[0]["id"]
+        response = self.client.get(f"/v1/emails/{row_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["attachments"][0]["text"], "Private attachment total USD 125.00")
+        denied = self.client.get(f"/v1/emails/{row_id}", headers={"Authorization": ""})
+        self.assertEqual(denied.status_code, 401)
+        self.assertNotIn("Private attachment", denied.text)
+        self.assertNotIn("Private attachment", self.client.get("/v1/emails").text)
+
 
 class ApiBoundaryTests(unittest.TestCase):
     def test_lost_queue_receipt_retains_idempotency_key_for_resubmission(self):

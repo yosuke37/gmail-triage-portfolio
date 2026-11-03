@@ -117,6 +117,15 @@ class Store:
             if changed.rowcount and suggestion.proposal:
                 row_id = self.db.execute("SELECT id FROM emails WHERE source=? AND account=? AND email_id=?", (source, account, email.id)).fetchone()["id"]
                 self.db.execute("INSERT INTO proposals(email_row,payload,created) VALUES (?,?,?) ON CONFLICT(email_row) DO UPDATE SET payload=excluded.payload,created=excluded.created", (row_id, json.dumps(suggestion.proposal), now()))
+            if changed.rowcount:
+                from triage.attachments import attachment_context
+                row_id = self.db.execute("SELECT id FROM emails WHERE source=? AND account=? AND email_id=?", (source, account, email.id)).fetchone()["id"]
+                self.db.execute("DELETE FROM email_attachments WHERE email_row=?", (row_id,))
+                for attachment in attachment_context(email):
+                    self.db.execute("INSERT INTO email_attachments(email_row,attachment_id,payload,created) VALUES (?,?,?,?)", (row_id, attachment["id"], json.dumps(attachment), now()))
+
+    def attachments(self, row_id):
+        return [json.loads(row["payload"]) for row in self.db.execute("SELECT payload FROM email_attachments WHERE email_row=? ORDER BY attachment_id", (row_id,))]
 
     def log(self, row_id, event, details):
         from triage.request_context import request_id, job_id

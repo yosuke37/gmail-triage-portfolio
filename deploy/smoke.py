@@ -71,7 +71,7 @@ env=connection_env();env['PGDATABASE']='triage_restore_smoke'
 archive=sorted(Path('/backups').glob('postgres-*.dump'))[-1]
 subprocess.run(['pg_restore','--exit-on-error','--no-owner','--dbname','triage_restore_smoke',str(archive)],env=env,check=True,capture_output=True)
 result=subprocess.run(['psql','-tAc','SELECT version_num FROM alembic_version'],env=env,check=True,capture_output=True,text=True)
-assert '0004_job_attempts' in result.stdout
+assert '0005_attachments' in result.stdout
 print('Backup restore verified in disposable local database.')"""
         compose("exec", "-T", "backups", "python3", "-c", restore)
     finally:

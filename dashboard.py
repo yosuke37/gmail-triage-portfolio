@@ -9,6 +9,7 @@ from triage.automation_ui import automation_panel
 from triage.digest_ui import digest_panel
 from triage.evaluation_ui import evaluation_panel
 from triage.jobs_ui import jobs_panel, track_job, job_status
+from triage.attachment_ui import attachment_previews
 
 st.set_page_config(page_title="Gmail Triage", page_icon="📬", layout="wide")
 st.title("Gmail Triage")
@@ -17,7 +18,7 @@ st.caption("Fetch messages, review suggestions, and apply approved labels. Appro
 
 def ingestion_panel(store):
     with st.expander("Fetch new emails", expanded=True):
-        st.caption("Fetch unprocessed Gmail messages matching your search. AI mode sends bounded message text to OpenAI and uses API credits. Fetching only saves suggestions; it does not change Gmail or send replies.")
+        st.caption("Fetch unprocessed Gmail messages matching your search. AI mode sends bounded message and supported attachment text to OpenAI and uses API credits. Text PDFs and .txt files are supported; attachment-based suggestions require review. Fetching only saves suggestions; it does not change Gmail or send replies.")
         with st.form("fetch-emails"):
             query = st.text_input("Gmail search", value="in:inbox newer_than:7d", key="fetch-query", max_chars=500)
             st.caption('Examples: is:unread · from:someone@example.com · newer_than:2d')
@@ -53,7 +54,7 @@ def mailbox_actions(store, row):
     row_id = row["id"]
     original_key = f"original-{row_id}"
     with st.expander("Original message"):
-        st.caption("Load a text preview from Gmail without marking it as read. Attachments are omitted; text is limited to 12,000 characters.")
+        st.caption("Load a text preview and bounded supported attachment text from Gmail without marking it as read. Body text is limited to 12,000 characters. Limits: 5 attachments, 2 MiB each, 4 MiB combined; up to 10 PDF pages and 12,000 total attachment characters.")
         if st.button("Load / refresh original", key=f"load-{row_id}"):
             try:
                 st.session_state[original_key] = store.original(row_id)
@@ -67,6 +68,7 @@ def mailbox_actions(store, row):
                 st.text(f"Reply-To: {original['reply_to']}")
             st.text("Gmail status at last refresh: " + ("Unread" if original["unread"] else "Read"))
             st.text(email.body or "No readable inline text. Open the message in Gmail to inspect it.")
+            attachment_previews(getattr(email, "attachments", ()))
             query = f"rfc822msgid:{original['message_id']}" if original["message_id"] else email.subject
             st.link_button("Open in Gmail", f"https://mail.google.com/mail/u/?authuser={quote(row['account'], safe='')}#search/{quote(query, safe='')}")
     with st.expander("Read status and reply"):
@@ -94,6 +96,7 @@ def mailbox_actions(store, row):
                 if st.button("Use suggested reply in editor", key=f"use-suggestion-{row_id}"):
                     st.session_state[f"body-{row_id}"] = suggestion["body"]
                     st.session_state[f"notes-{row_id}"] = suggestion["notes"]
+                    st.session_state.pop(f"draft-evidence-{row_id}", None)
                     st.session_state.pop(f"confirm-{row_id}", None)
                     st.rerun()
             elif suggestion:
@@ -114,6 +117,7 @@ def mailbox_actions(store, row):
                     st.session_state[original_key] = original
                     st.session_state[f"body-{row_id}"] = draft["body"]
                     st.session_state[f"notes-{row_id}"] = draft["review_notes"]
+                    st.session_state[f"draft-evidence-{row_id}"] = draft.get("evidence", [])
                     st.session_state.pop(f"confirm-{row_id}", None)
                     st.session_state.pop(draft_job_key, None)
                 elif draft_job["state"] in ("failed", "cancelled"):
@@ -129,6 +133,10 @@ def mailbox_actions(store, row):
                     st.error(str(exc))
             if st.session_state.get(f"notes-{row_id}"):
                 st.text("AI review notes: " + st.session_state[f"notes-{row_id}"])
+            for evidence in st.session_state.get(f"draft-evidence-{row_id}", []):
+                st.text(f"Draft evidence — {evidence['field']} {evidence.get('attachment_id') or ''}: {evidence['quote']}")
+            if st.session_state.get(f"draft-evidence-{row_id}"):
+                st.caption("Source citations from the generated draft; edits still require your review.")
             if f"body-{row_id}" not in st.session_state:
                 st.session_state[f"body-{row_id}"] = reply["payload"]["body"] if reply else ""
             body = st.text_area("Reply text", key=f"body-{row_id}", max_chars=20000)
@@ -208,7 +216,8 @@ try:
                     st.caption("Policy preview only. Proposals do not execute actions. Eligibility is checked again by the scheduler; read/unread always needs explicit approval.")
                     st.text(f"Intent: {proposal['plan']['intent']} · Risks: {', '.join(proposal['risk_flags']) or 'none flagged'}")
                     for action, verdict in zip(proposal["plan"]["actions"], verdicts):
-                        st.text(f"{action['kind']}: {verdict['status']} ({verdict['reason_code']})\nEvidence from {action['evidence']['field']}: {action['evidence']['quote']}")
+                        evidence = action['evidence']
+                        st.text(f"{action['kind']}: {verdict['status']} ({verdict['reason_code']})\nEvidence from {evidence['field']} {evidence.get('attachment_id') or ''}: {evidence['quote']}")
                         if action["reply_instruction"]:
                             st.text("Draft instruction: " + action["reply_instruction"])
             if row["needs_review"]:
@@ -239,6 +248,9 @@ try:
                         st.rerun()
                     except Exception as exc:
                         st.error(str(exc) if isinstance(exc, ValueError) else "Could not undo label. Check Gmail authorization and retry.")
+            with st.expander("Saved attachment evidence"):
+                st.caption("Snapshot used at classification time. Older saved emails are not reclassified automatically; load a Gmail original to inspect current attachments or generate a fresh draft.")
+                attachment_previews(store.attachments(row["id"]))
             if row["source"] == "gmail":
                 mailbox_actions(store, row)
     with st.expander("Local audit trail"):

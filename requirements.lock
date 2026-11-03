@@ -75,6 +75,7 @@ pydantic_core==2.50.2
 pydeck==0.9.3
 PyJWT==2.15.1
 pyparsing==3.3.3
+pypdf==6.21.4
 python-dateutil==4.0.0
 python-dotenv==1.2.4
 python-multipart==0.0.33
