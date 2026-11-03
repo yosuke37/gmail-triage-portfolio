@@ -38,7 +38,6 @@ services:
     plan: starter
     region: ohio
     dockerCommand: python -m triage.runtime api
-    healthCheckPath: /ready
     envVars:
       - fromGroup: triage-service-auth
       - fromGroup: triage-provider-secrets

@@ -141,6 +141,11 @@ class PackagingTests(unittest.TestCase):
         services = config["services"]
         self.assertEqual([s["name"] for s in services if s["type"] == "web"], ["triage-private-gateway"])
         self.assertEqual(len([s for s in services if s["type"] == "worker"]), 2)
+        # Render's API enforces this service-type restriction beyond its JSON
+        # schema. Private services receive platform TCP checks, not HTTP paths.
+        for service in services:
+            if service["type"] != "web":
+                self.assertNotIn("healthCheckPath", service)
         self.assertEqual(config["databases"][0]["ipAllowList"], [])
         self.assertNotIn(".secrets", (ROOT / "Dockerfile").read_text())
 
