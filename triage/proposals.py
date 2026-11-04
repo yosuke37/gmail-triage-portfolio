@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from triage.core import Email, Label, Suggestion
 
-PROMPT_VERSION = "triage-planner-attachments-v2"
-WORKFLOW_VERSION = "action-proposals-attachments-v2"
+PROMPT_VERSION = "triage-planner-docx-ocr-v3"
+WORKFLOW_VERSION = "action-proposals-docx-ocr-v3"
 Kind = Literal["set_label", "mark_read", "mark_unread", "draft_reply"]
 Risk = Literal["prompt_injection", "sensitive_request", "ambiguous"]
 

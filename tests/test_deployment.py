@@ -123,6 +123,7 @@ class PackagingTests(unittest.TestCase):
         import yaml
         config = yaml.safe_load((ROOT / "compose.yaml").read_text())
         services = config["services"]
+        self.assertEqual([name for name, value in services.items() if value.get("build") and value.get("image") == "gmail-triage:local"], ["api"])
         self.assertEqual([name for name, value in services.items() if value.get("ports")], ["gateway"])
         self.assertEqual(services["gateway"]["ports"], ["127.0.0.1:8443:443"])
         self.assertEqual(services["dashboard"]["secrets"], ["api_token"])

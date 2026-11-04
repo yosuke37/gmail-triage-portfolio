@@ -18,7 +18,7 @@ st.caption("Fetch messages, review suggestions, and apply approved labels. Appro
 
 def ingestion_panel(store):
     with st.expander("Fetch new emails", expanded=True):
-        st.caption("Fetch unprocessed Gmail messages matching your search. AI mode sends bounded message and supported attachment text to OpenAI and uses API credits. Text PDFs and .txt files are supported; attachment-based suggestions require review. Fetching only saves suggestions; it does not change Gmail or send replies.")
+        st.caption("Fetch unprocessed Gmail messages matching your search. AI mode sends bounded message and supported attachment text to OpenAI and uses API credits. PDF, DOCX, .txt, PNG and JPEG are supported with local English OCR; attachment-based suggestions require review. Fetching only saves suggestions; it does not change Gmail or send replies.")
         with st.form("fetch-emails"):
             query = st.text_input("Gmail search", value="in:inbox newer_than:7d", key="fetch-query", max_chars=500)
             st.caption('Examples: is:unread · from:someone@example.com · newer_than:2d')
@@ -54,7 +54,7 @@ def mailbox_actions(store, row):
     row_id = row["id"]
     original_key = f"original-{row_id}"
     with st.expander("Original message"):
-        st.caption("Load a text preview and bounded supported attachment text from Gmail without marking it as read. Body text is limited to 12,000 characters. Limits: 5 attachments, 2 MiB each, 4 MiB combined; up to 10 PDF pages and 12,000 total attachment characters.")
+        st.caption("Load a text preview and bounded supported attachment text from Gmail without marking it as read. Body text is limited to 12,000 characters. Limits: 5 attachments, 2 MiB each, 4 MiB combined; up to 10 PDF pages (OCR on at most 3 scanned pages), and 12,000 total attachment characters.")
         if st.button("Load / refresh original", key=f"load-{row_id}"):
             try:
                 st.session_state[original_key] = store.original(row_id)

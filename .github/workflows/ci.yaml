@@ -31,6 +31,7 @@ jobs:
           sudo apt-get install -y postgresql-common
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-18
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng poppler-utils fonts-dejavu-core
           echo /usr/lib/postgresql/18/bin >> "$GITHUB_PATH"
       - run: python -m pip check
       - run: python -m unittest discover -s tests -q
@@ -46,6 +47,7 @@ jobs:
       - run: docker compose --env-file deploy/compose.env --profile local-db config --quiet
       - run: docker compose --env-file deploy/compose.env --profile local-db up --build --wait --wait-timeout 300
       - run: python deploy/smoke.py
+      - run: docker compose --env-file deploy/compose.env --profile local-db exec -T worker python deploy/ocr_smoke.py
       - if: always()
         run: docker compose --env-file deploy/compose.env --profile local-db ps --all
       - if: always()

@@ -19,6 +19,8 @@ docker compose --env-file deploy/compose.env --profile local-db up --build --wai
 
 `prepare_deployment.py` generates independent database and service credentials, a random owner login, and a bcrypt password hash. It never prints their values or copies credentials by default. Rerunning it retains existing secret values. Local Compose secrets are bind-mounted files, not an encrypted secret vault; keep `.secrets/deploy` private and out of Git. The setup script restricts its directory on POSIX systems; protect that directory with your Windows account permissions too. Application secrets are not Docker build arguments, image layers, process arguments, or Compose plaintext environment values. [Docker secret mounts](https://docs.docker.com/compose/how-tos/use-secrets/)
 
+Compose builds the shared Python application image once via the `api` build definition; API, dashboard, migration, worker and scheduler all reuse that image. The image includes local Tesseract/Poppler OCR tools.
+
 The new stack uses its own PostgreSQL volume and starts with an empty review database, no jobs, and scheduling disabled. It does not import or overwrite the existing native application database. Only the gateway is published, at **https://localhost:8443**; the existing native dashboard at port 8501 can continue running separately.
 
 Open `.secrets/deploy/login.json` locally to read your username/password. Do not paste it into chat or commit it. Caddy uses a local development certificate; your browser will not initially trust its container CA. Copy the public root certificate out of Caddy and trust it locally if you want browser-trusted development HTTPS:

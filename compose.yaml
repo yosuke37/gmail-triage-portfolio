@@ -2,7 +2,7 @@ name: gmail-triage
 
 x-app: &app
   image: gmail-triage:local
-  build: .
+  pull_policy: never
   init: true
   restart: unless-stopped
   read_only: true
@@ -61,6 +61,8 @@ services:
 
   api:
     <<: *app
+    # Build the shared app image once; all Python services reuse this tag.
+    build: .
     command: [python, -m, triage.runtime, api]
     depends_on:
       migrate: {condition: service_completed_successfully}

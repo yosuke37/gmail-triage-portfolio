@@ -70,8 +70,8 @@ class ExtractionTests(unittest.TestCase):
         self.assertEqual(long["pages_read"], 10)
         self.assertTrue(long["truncated"])
         self.assertEqual(extract(pdf_bytes(encrypted=True), "application/pdf")["status"], "encrypted")
-        self.assertEqual(extract(pdf_bytes(text=""), "application/pdf")["status"], "no_text")
-        with patch("triage.attachments.subprocess.run", side_effect=subprocess.TimeoutExpired("parser", 10)):
+        self.assertIn(extract(pdf_bytes(text=""), "application/pdf")["status"], ("no_text", "ocr_unavailable"))
+        with patch("triage.attachments._run_parser", side_effect=subprocess.TimeoutExpired("parser", 10)):
             self.assertEqual(extract(b"%PDF-test", "application/pdf")["status"], "unreadable")
 
     def test_malformed_downloads_and_unknown_size_never_become_evidence(self):
