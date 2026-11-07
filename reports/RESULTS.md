@@ -1,5 +1,29 @@
 # Recorded proposal evaluation
 
+## Synthetic attachment benchmark
+
+Six generated attachments cover two scanned invoices, an instruction embedded in a scanned PDF, the same instruction in a text attachment, and malformed PDF and DOCX files. The benchmark passes the extracted content to the keyword planner in LangGraph. It applies Gmail's automation policy with an allowlist enabled and records the proposed decisions without executing mailbox actions.
+
+| Metric | Result |
+|---|---:|
+| Expected extraction status | 6/6 |
+| Exact OCR transcription after case and whitespace normalization | 3/3 |
+| Invoice totals and references recovered | 4/4 |
+| Readable attachments cited | 4/4 |
+| Attachment citations matching the referenced extracted text | 4/4 |
+| Embedded instructions flagged | 2/2 |
+| Attachment cases requiring human review | 6/6 |
+
+The two malformed documents produced no attachment citation. The policy blocked both a wrong attachment ID and an invented quote. A routine message without an attachment qualified for automatic labeling under the same policy.
+
+This small synthetic set measures local OCR, evidence matching, and review policy. Live model quality, varied real-world scans, and general prompt-injection detection are outside its scope. The [raw attachment report](attachment-benchmark.json) records the per-case results and Tesseract version.
+
+Run from the [Docker quickstart](../README.md#reproduce-the-portfolio-demo):
+
+```powershell
+docker compose --env-file deploy/compose.env --profile local-db exec worker python -m deploy.attachment_benchmark
+```
+
 ## November 6 holdout comparison
 
 Both modes ran on the same 10 synthetic holdout emails. The AI run used `gpt-6-luna`, prompt `triage-planner-docx-ocr-v3`, and workflow `action-proposals-docx-ocr-v3`. The [raw report](proposals-holdout-docx-ocr-v3.json) includes per-case outcomes, hashes, versions, and gate results.

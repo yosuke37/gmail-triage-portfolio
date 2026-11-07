@@ -6,7 +6,7 @@ A Python portfolio project for explainable email labeling using the OpenAI Agent
 
 [Watch or download the 48-second demo](docs/media/gmail-triage-walkthrough.mp4). It uses synthetic email to show a scanned invoice with an OCR citation, a prompt-injection flag, and both review decisions in the audit trail.
 
-[Run the demo locally](#reproduce-the-portfolio-demo) · [Evaluation results](reports/RESULTS.md)
+[Run the demo locally](#reproduce-the-portfolio-demo) · [Architecture](docs/ARCHITECTURE.md) · [Evaluation results](reports/RESULTS.md)
 
 **Outlook support is a work in progress.** Gmail is the supported workflow for this demo.
 

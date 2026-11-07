@@ -21,12 +21,12 @@ def document_bytes(xml=None, *, extra=None, compression=zipfile.ZIP_DEFLATED):
     return target.getvalue()
 
 
-def scan_image():
+def scan_image(text="PLEASE REVIEW INVOICE\nTOTAL USD 125.00\nREFERENCE DEMO 125", *, ink="black"):
     image = Image.new("RGB", (1500, 500), "white")
     fonts = [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"), Path("C:/Windows/Fonts/arial.ttf")]
     font_path = next((path for path in fonts if path.is_file()), None)
     font = ImageFont.truetype(str(font_path), 46) if font_path else ImageFont.load_default(size=46)
-    ImageDraw.Draw(image).multiline_text((70, 80), "PLEASE REVIEW INVOICE\nTOTAL USD 125.00\nREFERENCE DEMO 125", font=font, fill="black", spacing=28)
+    ImageDraw.Draw(image).multiline_text((70, 80), text, font=font, fill=ink, spacing=28)
     return image
 
 

@@ -49,6 +49,7 @@ jobs:
       - run: python deploy/smoke.py
       - run: docker compose --env-file deploy/compose.env --profile local-db exec -T worker python deploy/ocr_smoke.py
       - run: docker compose --env-file deploy/compose.env --profile local-db exec -T worker python -m deploy.portfolio_demo
+      - run: docker compose --env-file deploy/compose.env --profile local-db exec -T worker python -m deploy.attachment_benchmark
       - if: always()
         run: docker compose --env-file deploy/compose.env --profile local-db ps --all
       - if: always()
