@@ -2,6 +2,12 @@
 
 A Python portfolio project for explainable email labeling using the OpenAI Agents SDK and LangGraph.
 
+## Walkthrough
+
+[Watch or download the 48-second demo](docs/media/gmail-triage-walkthrough.mp4). It uses synthetic email to show a scanned invoice with an OCR citation, a prompt-injection flag, and both review decisions in the audit trail.
+
+**Outlook support is a work in progress.** Gmail is the supported workflow for this demo.
+
 ## Current capabilities
 
 **Attachment-aware review** includes bounded PDF, DOCX, `.txt`, PNG and JPEG extraction with local English OCR in classification and reply drafting, with stored previews, typed source citations, extraction statuses, and mandatory human review for attachment-bearing messages. An offline synthetic demo is included. See [attachment setup, limits, and verification](docs/ATTACHMENTS.md).
