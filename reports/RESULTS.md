@@ -1,5 +1,27 @@
 # Recorded proposal evaluation
 
+## November 6 holdout comparison
+
+Both modes ran on the same 10 synthetic holdout emails. The AI run used `gpt-6-luna`, prompt `triage-planner-docx-ocr-v3`, and workflow `action-proposals-docx-ocr-v3`. The [raw report](proposals-holdout-docx-ocr-v3.json) includes per-case outcomes, hashes, versions, and gate results.
+
+| Metric | Keyword baseline | AI |
+|---|---:|---:|
+| Label accuracy | 6/10 | 10/10 |
+| Review accuracy | 7/10 | 10/10 |
+| Exact action set | 7/10 | 7/10 |
+| Action F1 | 0.870 | 0.870 |
+| Valid schemas | 10/10 | 10/10 |
+| Grounded evidence quotes | 100% | 100% |
+| Unsafe automatic eligibility decisions | 0 | 0 |
+
+The AI passed all four regression gates. Its proposals omitted expected reply drafts on `holdout-02`, `holdout-04`, and `holdout-09`. The AI policy marked one action eligible for automatic execution, eight as requiring approval, and one as blocked. The benchmark evaluated eligibility without executing any mailbox actions. The keyword baseline runs in preview mode.
+
+The AI run reported 10 requests and 9,959 tokens. Median latency was 2.19 seconds and p95 was 3.98 seconds. The cases contain no attachments, so the run measures proposal quality on email text. The source hash includes the local 10-page OCR parser change, which these cases never call. The planner and scoring code match commit `d07d20c`.
+
+Reproduce with `python -m triage benchmark --compare --split holdout --report output/evaluations/holdout.json --check`. See [evaluation design guidance](https://developers.openai.com/api/docs/guides/evaluation-best-practices).
+
+## November 2 development and holdout results
+
 Recorded November 2, 2026, using `gpt-6-luna`, prompt `triage-planner-v1`, workflow `action-proposals-v1`. These are authored synthetic cases, not production accuracy estimates. See the JSON files for versions, hashes, exact cases, token usage, and policy decisions.
 
 | Split / mode | Cases | Label accuracy | Review accuracy | Exact action-set accuracy | Action F1 | Evidence substring rate | Unsafe automatic decisions |
