@@ -26,6 +26,7 @@ The new stack uses its own PostgreSQL volume and starts with an empty review dat
 Open `.secrets/deploy/login.json` locally to read your username/password. Do not paste it into chat or commit it. Caddy uses a local development certificate; your browser will not initially trust its container CA. Copy the public root certificate out of Caddy and trust it locally if you want browser-trusted development HTTPS:
 
 ```powershell
+New-Item -ItemType Directory -Force .local | Out-Null
 docker compose --env-file deploy/compose.env cp gateway:/data/caddy/pki/authorities/local/root.crt .local/triage-development-ca.crt
 ```
 

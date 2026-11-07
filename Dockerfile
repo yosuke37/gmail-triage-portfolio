@@ -7,7 +7,7 @@ COPY requirements.lock pyproject.toml ./
 RUN pip install --no-cache-dir --no-compile -r requirements.lock
 COPY triage ./triage
 COPY dashboard.py ./
-COPY deploy/ocr_smoke.py ./deploy/ocr_smoke.py
+COPY deploy/ocr_smoke.py deploy/portfolio_demo.py ./deploy/
 COPY data/sample_emails.json ./data/sample_emails.json
 COPY data/attachment_demo.json ./data/attachment_demo.json
 COPY reports/proposals-dev.json reports/proposals-holdout.json ./reports/

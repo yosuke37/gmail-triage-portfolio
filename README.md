@@ -6,6 +6,8 @@ A Python portfolio project for explainable email labeling using the OpenAI Agent
 
 [Watch or download the 48-second demo](docs/media/gmail-triage-walkthrough.mp4). It uses synthetic email to show a scanned invoice with an OCR citation, a prompt-injection flag, and both review decisions in the audit trail.
 
+[Run the demo locally](#reproduce-the-portfolio-demo) · [Evaluation results](reports/RESULTS.md)
+
 **Outlook support is a work in progress.** Gmail is the supported workflow for this demo.
 
 ## Current capabilities
@@ -33,6 +35,29 @@ Original Gmail messages can be loaded as bounded, plain-text previews with read 
 The application reads synthetic emails or Gmail, runs an OpenAI Agents SDK classifier inside a LangGraph workflow, and saves suggestions for human review. Demo mode uses keyword rules without API calls. A local Streamlit dashboard lets you approve, correct, or reject labels, mark Gmail messages read/unread, and compose replies for explicit review and sending. Separate commands apply approved custom Gmail labels and undo them with an audit trail. SQLite checkpoints let interrupted graph runs resume; processed messages are deduplicated. Polling periodically ingests new suggestions without applying them automatically.
 
 **Live Gmail and OpenAI usage requires your own credentials.** See [the setup guide](docs/SETUP.md) for steps from a new account to the first live batch. All automated tests use synthetic data and fake network calls.
+
+## Reproduce the portfolio demo
+
+On Windows, start Docker Desktop with Linux containers and use Python 3.12 or newer. From PowerShell, clone the repository, generate a local dashboard login, and import the synthetic batch.
+
+```powershell
+git clone https://github.com/yosuke37/gmail-triage-portfolio.git
+cd gmail-triage-portfolio
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install bcrypt==5.0.0
+.\.venv\Scripts\python.exe scripts/prepare_deployment.py
+Copy-Item deploy/compose.env.example deploy/compose.env
+docker compose --env-file deploy/compose.env --profile local-db up --build -d --wait --wait-timeout 300
+docker compose --env-file deploy/compose.env --profile local-db exec worker python -m deploy.portfolio_demo
+```
+
+Open the [local dashboard](https://localhost:8443/) and sign in with the generated username and password in `.secrets/deploy/login.json`. See the [local HTTPS setup](docs/DEPLOYMENT.md#local-windows-setup) to trust the development certificate. In **Review emails**, select source **sample** and search for `[Portfolio demo]`. Include **Pending**, **Approved**, and **Rejected** when revisiting a prior run.
+
+1. Open **February invoice** and expand **Saved attachment evidence**. The script generates an image-only PDF and runs local OCR during import. In **Agent action proposal**, find the attachment citation containing `125.00` and the `attachment_requires_review` flag. Approve the suggested **Action needed** label.
+2. Open **Suspicious request**. Its message body includes a synthetic instruction to reveal a secret. Expand **Agent action proposal** to see `prompt_injection` and the approval gate, then select **Reject**.
+3. Open **Order receipt** for an ordinary keyword-classification example. Expand **Local audit trail** to see the saved review decisions.
+
+The demo uses the local keyword classifier and requires no Gmail or OpenAI credentials. The first import prints `processed: 3`. Reruns report `skipped: 3` and preserve prior decisions. To stop the stack while keeping those decisions, run `docker compose --env-file deploy/compose.env --profile local-db stop`.
 
 ## Run on Windows (PowerShell)
 

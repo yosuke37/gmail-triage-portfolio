@@ -48,6 +48,7 @@ jobs:
       - run: docker compose --env-file deploy/compose.env --profile local-db up --build --wait --wait-timeout 300
       - run: python deploy/smoke.py
       - run: docker compose --env-file deploy/compose.env --profile local-db exec -T worker python deploy/ocr_smoke.py
+      - run: docker compose --env-file deploy/compose.env --profile local-db exec -T worker python -m deploy.portfolio_demo
       - if: always()
         run: docker compose --env-file deploy/compose.env --profile local-db ps --all
       - if: always()
